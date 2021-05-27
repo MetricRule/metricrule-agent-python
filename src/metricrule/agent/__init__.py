@@ -1,5 +1,6 @@
 
 import functools
+from werkzeug.wsgi import get_input_stream
 
 class WSGIMetricsMiddleware:
     """WSGI application middleware for ML model metrics.
@@ -25,6 +26,8 @@ class WSGIMetricsMiddleware:
             environ: A WSGI environment.
             start_response: The WSGI start_response callable.
         """
+        request_body = get_input_stream(environ, safe_fallback=True).read()
+        print(request_body)
         start_response = self._create_start_response(start_response)
         return self.wsgi(environ, start_response)
 
