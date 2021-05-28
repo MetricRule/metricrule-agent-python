@@ -26,8 +26,12 @@ class WSGIMetricsMiddleware:
             environ: A WSGI environment.
             start_response: The WSGI start_response callable.
         """
-        request_body = get_input_stream(environ, safe_fallback=True).read()
+        request_stream = get_input_stream(environ, safe_fallback=True)
+        request_body = request_stream.read()
         print(request_body)
         start_response = self._create_start_response(start_response)
-        return self.wsgi(environ, start_response)
+        response_stream = self.wsgi(environ, start_response)
+        response_body = b"".join(response_stream)
+        print(response_body)
+        return response_stream
 
