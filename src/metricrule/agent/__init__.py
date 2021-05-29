@@ -1,6 +1,7 @@
 
 import functools
 from werkzeug.wsgi import get_input_stream
+from ..config_gen import metric_configuration_pb2
 
 class WSGIMetricsMiddleware:
     """WSGI application middleware for ML model metrics.
@@ -8,8 +9,11 @@ class WSGIMetricsMiddleware:
     Args:
         wsgi: The WSGI application callable to forward requests to.
     """
-    def __init__(self, wsgi):
+    def __init__(self, wsgi, config_path=None):
         self.wsgi = wsgi
+        self.config_path = config_path
+
+        self.config =self._load_config()
 
     @staticmethod
     def _create_start_response(start_response):
@@ -35,3 +39,12 @@ class WSGIMetricsMiddleware:
         print(response_body)
         return response_stream
 
+    def _load_config(self):
+        # Read file
+        config_data = ''
+        if len(self.config_path) > 0:
+            with open(self.config_path, 'r') as f:
+                config_data = f.read()
+        # Load into proto
+        config_proto = metric_configuration_pb2.SidecarConfig()
+        config_proto.ParseFromString(config_data)

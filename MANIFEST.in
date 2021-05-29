@@ -1,0 +1,3 @@
+include Makefile
+include api/Makefile
+include api/proto/metric_configuration.proto
