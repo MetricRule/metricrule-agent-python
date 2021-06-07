@@ -8,12 +8,15 @@ from . import mrmetric, mrotel
 from werkzeug.wsgi import get_input_stream
 from google.protobuf import text_format
 
-from prometheus_client import start_http_server
-
 from opentelemetry import metrics
 from opentelemetry.exporter.prometheus import PrometheusMetricsExporter
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export.controller import PushController
+from prometheus_client import make_wsgi_app
+
+class WSGIApplication:
+    def make():
+        return make_wsgi_app()
 
 class WSGIMetricsMiddleware:
     """WSGI application middleware for ML model metrics.
@@ -26,7 +29,6 @@ class WSGIMetricsMiddleware:
         self.wsgi = wsgi
         self._config = _load_config(config_path)
 
-        start_http_server(port=8000, addr="localhost")
         processor_mode = "stateful"
         metrics.set_meter_provider(MeterProvider())
         self._meter = metrics.get_meter(__name__, processor_mode == "stateful")

@@ -1,7 +1,8 @@
 import argparse
 
 from flask import Flask
-from metricrule.agent import WSGIMetricsMiddleware 
+from metricrule.agent import WSGIMetricsMiddleware, WSGIApplication
+from werkzeug.middleware.dispatcher import DispatcherMiddleware
 
 app = Flask('MetricRuleDemoApp')
 
@@ -16,4 +17,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     app.wsgi_app = WSGIMetricsMiddleware(app.wsgi_app, args.agent_config_path)
-    app.run('127.0.0.1', '8551', debug=True)
+    app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {
+        '/metrics': WSGIApplication.make()
+    })
+    app.run('127.0.0.1', '9001', debug=True)
