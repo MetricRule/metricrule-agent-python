@@ -45,14 +45,6 @@ class WSGIMetricsMiddleware:
             for spec in specs[mrmetric.MetricContext.OUTPUT]
         }
 
-    @staticmethod
-    def _create_start_response(start_response):
-        @functools.wraps(start_response)
-        def _start_response(status, response_headers, *args, **kwargs):
-            return start_response(status, response_headers, *args, **kwargs)
-
-        return _start_response
-    
     def __call__(self, environ, start_response):
         """The WSGI application
 
@@ -63,14 +55,12 @@ class WSGIMetricsMiddleware:
         request_stream = get_input_stream(environ, safe_fallback=True)
         request_body = request_stream.read()
         self._get_request_metrics(request_body)
-        start_response = self._create_start_response(start_response)
         response_stream = self.wsgi(environ, start_response)
-        response_body = b"".join(response_stream)
+        response_body = b''.join(response_stream)
         self._get_response_metrics(response_body)
-        return response_stream
+        return [response_body]
 
     def _get_request_metrics(self, request_body) -> None:
-        # print(request_body)
         try:
             json_obj = json.loads(request_body)
         except ValueError as e:
@@ -87,7 +77,6 @@ class WSGIMetricsMiddleware:
                 self._meter.record_batch(labels, recordings)
 
     def _get_response_metrics(self, response_body) -> None:
-        # print(response_body)
         try:
             json_obj = json.loads(response_body)
         except ValueError as e:

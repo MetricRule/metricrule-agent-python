@@ -4,7 +4,7 @@ from enum import Enum
 from ..config_gen import metric_configuration_pb2
 
 from opentelemetry import metrics
-from jsonpath_ng import jsonpath, parse
+from jsonpath_ng import parse
 
 class MetricInstrumentSpec(NamedTuple):
     instrumentType: type
@@ -39,10 +39,10 @@ def get_metric_instances(
     filter: str
     if context == MetricContext.INPUT:
         configs = tuple(config.input_metrics)
-        filter = config.input_content_filter
+        filter = _format_filter(config.input_content_filter)
     elif context == MetricContext.OUTPUT:
-        configs = tuple(config.output_filter)
-        filter = config.output_content_filter
+        configs = tuple(config.output_metrics)
+        filter = _format_filter(config.output_content_filter)
     else:
         return {}
 
@@ -71,7 +71,7 @@ def get_context_labels(
     filter: str
     if context == MetricContext.INPUT:
         configs = tuple(config.context_labels_from_input)
-        filter = config.input_content_filter
+        filter = _format_filter(config.input_content_filter)
     elif context == MetricContext.OUTPUT:
         return ()
     else:
@@ -86,6 +86,10 @@ def get_context_labels(
         for payload in filtered_values:
             labels.extend(_get_labels_for_label_config(config, payload))
     return labels
+
+def _format_filter(filter: str) -> str:
+    if filter[0] == '.' or filter[0] == '[':
+        return '$' + filter
 
 def _get_instrument_spec(
         config: metric_configuration_pb2.MetricConfig,
