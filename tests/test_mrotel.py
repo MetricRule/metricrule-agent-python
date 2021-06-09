@@ -1,6 +1,5 @@
-from unittest import TestCase
+from unittest import TestCase, main
 from unittest.mock import MagicMock, Mock
-from unittest import main
 
 from opentelemetry import metrics
 

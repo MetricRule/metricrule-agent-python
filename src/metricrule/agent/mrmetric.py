@@ -12,7 +12,7 @@ class MetricInstrumentSpec(NamedTuple):
     name: str
 
 class MetricInstance(NamedTuple):
-    metricValues: list[Any]
+    metricValues: tuple[Any]
     labels: tuple[tuple[str, str]]
 
 class MetricContext(Enum):
@@ -24,10 +24,8 @@ def get_instrument_specs(
         config: metric_configuration_pb2.SidecarConfig
     ) -> dict[MetricContext, tuple[MetricInstrumentSpec]]:
     specs = {}
-    if len(config.input_metrics) > 0:
-        specs[MetricContext.INPUT] = tuple(map(_get_instrument_spec, config.input_metrics))
-    if len(config.output_metrics) > 0:
-        specs[MetricContext.OUTPUT] = tuple(map(_get_instrument_spec, config.output_metrics))
+    specs[MetricContext.INPUT] = tuple(map(_get_instrument_spec, config.input_metrics))
+    specs[MetricContext.OUTPUT] = tuple(map(_get_instrument_spec, config.output_metrics))
     return specs
 
 def get_metric_instances(
@@ -46,7 +44,7 @@ def get_metric_instances(
     else:
         return {}
 
-    filtered_values = (payload)
+    filtered_values = (payload,)
     if len(filter) > 0:
         filtered_values = _get_filtered_values(filter, payload)
 
@@ -60,7 +58,7 @@ def get_metric_instances(
                 outputs[spec].append(MetricInstance(values, labels))
             else:
                 outputs[spec] = [MetricInstance(values, labels)]
-    return {spec:tuple(instances) for spec, instances in outputs}
+    return {spec:tuple(instances) for spec, instances in outputs.items()}
 
 def get_context_labels(
         config: metric_configuration_pb2.SidecarConfig,
@@ -77,7 +75,7 @@ def get_context_labels(
     else:
         return ()
 
-    filtered_values = (payload)
+    filtered_values = (payload,)
     if len(filter) > 0:
         filtered_values = _get_filtered_values(filter, payload)
 
@@ -88,8 +86,9 @@ def get_context_labels(
     return labels
 
 def _format_filter(filter: str) -> str:
-    if filter[0] == '.' or filter[0] == '[':
+    if len(filter) > 0 and (filter[0] == '.' or filter[0] == '['):
         return '$' + filter
+    return filter
 
 def _get_instrument_spec(
         config: metric_configuration_pb2.MetricConfig,
@@ -140,11 +139,11 @@ def _get_metric_values(
     ) -> tuple[Any]:
     configured_type = config.WhichOneof('metric')
     if configured_type == 'simple_counter':
-        return (1)
+        return (1,)
     elif configured_type == 'value':
         return _extract_values(config.value.value, payload)
     # Default to a counter
-    return (1)
+    return (1,)
 
 def _get_metric_labels(
         config: metric_configuration_pb2.MetricConfig,

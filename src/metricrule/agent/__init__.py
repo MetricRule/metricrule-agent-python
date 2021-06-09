@@ -1,5 +1,4 @@
 
-import functools
 import json
 
 from ..config_gen import metric_configuration_pb2
