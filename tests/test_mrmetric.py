@@ -60,7 +60,42 @@ class TestMrMetric(TestCase):
             self.assertEqual(value, 1)
 
     def test_input_counter_with_labels(self):
-        pass
+        config_data = """
+        input_metrics {
+            name: "simple"
+            simple_counter: {}
+            labels: {
+                label_key: { string_value: "Application" }
+                label_value: { string_value: "MetricRule" }
+            }
+        }
+        """
+        config_proto = metric_configuration_pb2.SidecarConfig()
+        text_format.Parse(config_data, config_proto)
+
+        result = get_metric_instances(config_proto, '{}', MetricContext.INPUT)
+
+        expected_length = 1
+        self.assertEqual(len(result), expected_length)
+        counter = 0
+        for spec, instances in result.items():
+            counter += 1
+            if counter > expected_length:
+                self.fail("Exceeded expected iteration length")
+            
+            self.assertEqual(spec.instrumentType, metrics.Counter)
+            self.assertEqual(spec.metricValueType, int)
+            self.assertEqual(spec.name, 'simple')
+
+            self.assertEqual(len(instances), 1)
+            instance = instances[0]
+            self.assertEqual(len(instance.labels), 1)
+            label = instance.labels[0]
+            self.assertEqual(label[0], 'Application')
+            self.assertEqual(label[1], 'MetricRule')
+            self.assertEqual(len(instance.metricValues), 1)
+            value = instance.metricValues[0]
+            self.assertEqual(value, 1)
 
     def test_output_value_metrics(self):
         pass

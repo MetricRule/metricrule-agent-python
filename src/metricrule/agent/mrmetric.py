@@ -186,11 +186,11 @@ def _extract_values(
     if config.HasField('static_value'):
         configured_static_type = config.WhichOneof('static_value')
         if configured_static_type == 'string_value':
-            return (config.string_value)
+            return (config.string_value,)
         elif configured_static_type == 'integer_value':
-            return (config.integer_value)
+            return (config.integer_value,)
         elif configured_static_type == 'float_value':
-            return (config.float_value)
+            return (config.float_value,)
 
     return ()
 
