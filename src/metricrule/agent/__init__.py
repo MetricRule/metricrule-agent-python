@@ -1,21 +1,23 @@
 
 import json
 
-from ..config_gen import metric_configuration_pb2
-from . import mrmetric, mrotel
-
-from werkzeug.wsgi import get_input_stream
 from google.protobuf import text_format
-
 from opentelemetry import metrics
 from opentelemetry.exporter.prometheus import PrometheusMetricsExporter
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export.controller import PushController
 from prometheus_client import make_wsgi_app
+from werkzeug.wsgi import get_input_stream
+
+from ..config_gen import metric_configuration_pb2
+from . import mrmetric, mrotel
+
 
 class WSGIApplication:
+    @staticmethod
     def make():
         return make_wsgi_app()
+
 
 class WSGIMetricsMiddleware:
     """WSGI application middleware for ML model metrics.
@@ -24,6 +26,7 @@ class WSGIMetricsMiddleware:
         wsgi: The WSGI application callable to forward requests to.
         config_path: The path to read the agent configuration from.
     """
+
     def __init__(self, wsgi, config_path=None):
         self.wsgi = wsgi
         self._config = _load_config(config_path)
@@ -35,12 +38,12 @@ class WSGIMetricsMiddleware:
         self._controller = PushController(self._meter, exporter, 5)
 
         specs = mrmetric.get_instrument_specs(self._config)
-        self._input_instruments =  {
-            spec:mrotel.initialize_instrument(self._meter, spec) 
+        self._input_instruments = {
+            spec: mrotel.initialize_instrument(self._meter, spec)
             for spec in specs[mrmetric.MetricContext.INPUT]
         }
         self._output_instruments = {
-            spec:mrotel.initialize_instrument(self._meter, spec) 
+            spec: mrotel.initialize_instrument(self._meter, spec)
             for spec in specs[mrmetric.MetricContext.OUTPUT]
         }
 
@@ -62,38 +65,44 @@ class WSGIMetricsMiddleware:
     def _get_request_metrics(self, request_body) -> None:
         try:
             json_obj = json.loads(request_body)
-        except ValueError as e:
+        except ValueError:
             return
         # TODO(jishnu): Cache these labels to use with response.
-        context_labels = mrmetric.get_context_labels(self._config, json_obj, mrmetric.MetricContext.INPUT)
-        metrics = mrmetric.get_metric_instances(self._config, json_obj, mrmetric.MetricContext.INPUT)
-        for spec, metric_instances in metrics:
+        context_labels = mrmetric.get_context_labels(
+            self._config, json_obj, mrmetric.MetricContext.INPUT)
+        metric_instances = mrmetric.get_metric_instances(
+            self._config, json_obj, mrmetric.MetricContext.INPUT)
+        for spec, instances in metric_instances:
             instrument = self._input_instruments[spec]
-            for instance in metric_instances:
-                recordings = [instrument.record(val) for val in instance.metricValues]
-                labels = {label[0]:label[1] for label in instance.labels}
-                labels.update({label[0]:label[1] for label in context_labels})
+            for instance in instances:
+                recordings = [instrument.record(val)
+                              for val in instance.metricValues]
+                labels = {label[0]: label[1] for label in instance.labels}
+                labels.update({label[0]: label[1] for label in context_labels})
                 self._meter.record_batch(labels, recordings)
 
     def _get_response_metrics(self, response_body) -> None:
         try:
             json_obj = json.loads(response_body)
-        except ValueError as e:
+        except ValueError:
             return
-        metrics = mrmetric.get_metric_instances(self._config, json_obj, mrmetric.MetricContext.OUTPUT)
-        for spec, metric_instances in metrics:
+        metric_instances = mrmetric.get_metric_instances(
+            self._config, json_obj, mrmetric.MetricContext.OUTPUT)
+        for spec, instances in metric_instances:
             instrument = self._input_instruments[spec]
-            for instance in metric_instances:
-                recordings = [instrument.record(val) for val in instance.metricValues]
+            for instance in instances:
+                recordings = [instrument.record(val)
+                              for val in instance.metricValues]
                 # TODO(jishnu): Use context labels here
-                labels = {label[0]:label[1] for label in instance.labels}
+                labels = {label[0]: label[1] for label in instance.labels}
                 self._meter.record_batch(labels, recordings)
+
 
 def _load_config(config_path) -> metric_configuration_pb2.SidecarConfig:
     config_data = ''
     if len(config_path) > 0:
-        with open(config_path, 'r') as f:
-            config_data = f.read()
+        with open(config_path, 'r') as config_file:
+            config_data = config_file.read()
     config_proto = metric_configuration_pb2.SidecarConfig()
     text_format.Parse(config_data, config_proto)
     return config_proto

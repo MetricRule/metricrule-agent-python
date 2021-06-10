@@ -4,18 +4,18 @@ from unittest import TestCase, main
 from google.protobuf import text_format
 from opentelemetry import metrics
 
-from metricrule.agent import mrmetric
 from metricrule.config_gen import metric_configuration_pb2
-from metricrule.agent.mrmetric import *
+from metricrule.agent.mrmetric import get_instrument_specs, get_context_labels, get_metric_instances, MetricContext
+
 
 class TestMrMetric(TestCase):
     def test_input_counter_instrument_spec(self):
-        config_data = """
+        config_data = '''
         input_metrics {
             name: "simple"
             simple_counter: {}
         }
-        """
+        '''
         config_proto = metric_configuration_pb2.SidecarConfig()
         text_format.Parse(config_data, config_proto)
 
@@ -30,17 +30,18 @@ class TestMrMetric(TestCase):
         self.assertEqual(single_spec.name, 'simple')
 
     def test_input_counter_metrics(self):
-        config_data = """
+        config_data = '''
         input_metrics {
             name: "simple"
             simple_counter: {}
         }
-        """
+        '''
         config_proto = metric_configuration_pb2.SidecarConfig()
         text_format.Parse(config_data, config_proto)
         payload = json.loads('{}')
 
-        result = get_metric_instances(config_proto, payload, MetricContext.INPUT)
+        result = get_metric_instances(
+            config_proto, payload, MetricContext.INPUT)
 
         expected_length = 1
         self.assertEqual(len(result), expected_length)
@@ -49,7 +50,7 @@ class TestMrMetric(TestCase):
             counter += 1
             if counter > expected_length:
                 self.fail("Exceeded expected iteration length")
-            
+
             self.assertEqual(spec.instrumentType, metrics.Counter)
             self.assertEqual(spec.metricValueType, int)
             self.assertEqual(spec.name, 'simple')
@@ -62,7 +63,7 @@ class TestMrMetric(TestCase):
             self.assertEqual(value, 1)
 
     def test_input_counter_with_labels(self):
-        config_data = """
+        config_data = '''
         input_metrics {
             name: "simple"
             simple_counter: {}
@@ -71,12 +72,13 @@ class TestMrMetric(TestCase):
                 label_value: { string_value: "MetricRule" }
             }
         }
-        """
+        '''
         config_proto = metric_configuration_pb2.SidecarConfig()
         text_format.Parse(config_data, config_proto)
         payload = json.loads('{}')
 
-        result = get_metric_instances(config_proto, payload, MetricContext.INPUT)
+        result = get_metric_instances(
+            config_proto, payload, MetricContext.INPUT)
 
         expected_length = 1
         self.assertEqual(len(result), expected_length)
@@ -85,7 +87,7 @@ class TestMrMetric(TestCase):
             counter += 1
             if counter > expected_length:
                 self.fail("Exceeded expected iteration length")
-            
+
             self.assertEqual(spec.instrumentType, metrics.Counter)
             self.assertEqual(spec.metricValueType, int)
             self.assertEqual(spec.name, 'simple')
@@ -101,7 +103,7 @@ class TestMrMetric(TestCase):
             self.assertEqual(value, 1)
 
     def test_output_value_metrics(self):
-        config_data = """
+        config_data = '''
         output_metrics {
             name: "output_values"
             value {
@@ -113,12 +115,13 @@ class TestMrMetric(TestCase):
                 }
             }
         }
-        """
+        '''
         config_proto = metric_configuration_pb2.SidecarConfig()
         text_format.Parse(config_data, config_proto)
         payload = json.loads('{ "prediction": 0.495 }')
 
-        result = get_metric_instances(config_proto, payload, MetricContext.OUTPUT)
+        result = get_metric_instances(
+            config_proto, payload, MetricContext.OUTPUT)
 
         expected_length = 1
         self.assertEqual(len(result), expected_length)
@@ -127,7 +130,7 @@ class TestMrMetric(TestCase):
             counter += 1
             if counter > expected_length:
                 self.fail("Exceeded expected iteration length")
-            
+
             self.assertEqual(spec.instrumentType, metrics.ValueRecorder)
             self.assertEqual(spec.metricValueType, float)
             self.assertEqual(spec.name, 'output_values')
@@ -140,7 +143,7 @@ class TestMrMetric(TestCase):
             self.assertEqual(value, 0.495)
 
     def test_output_nested_value_metrics(self):
-        config_data = """
+        config_data = '''
         output_metrics {
             name: "output_values"
             value {
@@ -152,12 +155,13 @@ class TestMrMetric(TestCase):
                 }
             }
         }
-        """
+        '''
         config_proto = metric_configuration_pb2.SidecarConfig()
         text_format.Parse(config_data, config_proto)
         payload = json.loads('{ "prediction": [[0.495]] }')
 
-        result = get_metric_instances(config_proto, payload, MetricContext.OUTPUT)
+        result = get_metric_instances(
+            config_proto, payload, MetricContext.OUTPUT)
 
         expected_length = 1
         self.assertEqual(len(result), expected_length)
@@ -166,7 +170,7 @@ class TestMrMetric(TestCase):
             counter += 1
             if counter > expected_length:
                 self.fail("Exceeded expected iteration length")
-            
+
             self.assertEqual(spec.instrumentType, metrics.ValueRecorder)
             self.assertEqual(spec.metricValueType, float)
             self.assertEqual(spec.name, 'output_values')
@@ -179,7 +183,7 @@ class TestMrMetric(TestCase):
             self.assertEqual(value, 0.495)
 
     def test_multiple_inputs_nested_value_metrics(self):
-        config_data = """
+        config_data = '''
         input_metrics {
             name: "input_distribution_counts"
             simple_counter {}
@@ -202,10 +206,10 @@ class TestMrMetric(TestCase):
                 }
             }
         } 
-        """
+        '''
         config_proto = metric_configuration_pb2.SidecarConfig()
         text_format.Parse(config_data, config_proto)
-        payload = json.loads("""{"instances": [{
+        payload = json.loads('''{"instances": [{
             "Type": [
                 "Cat"
             ],
@@ -215,9 +219,10 @@ class TestMrMetric(TestCase):
             "Breed1": [
                 "Turkish"
             ]
-        }]}""")
+        }]}''')
 
-        result = get_metric_instances(config_proto, payload, MetricContext.INPUT)
+        result = get_metric_instances(
+            config_proto, payload, MetricContext.INPUT)
 
         expected_length = 1
         self.assertEqual(len(result), expected_length)
@@ -226,7 +231,7 @@ class TestMrMetric(TestCase):
             counter += 1
             if counter > expected_length:
                 self.fail("Exceeded expected iteration length")
-            
+
             self.assertEqual(spec.instrumentType, metrics.Counter)
             self.assertEqual(spec.metricValueType, int)
             self.assertEqual(spec.name, 'input_distribution_counts')
@@ -245,7 +250,7 @@ class TestMrMetric(TestCase):
             self.assertEqual(instance.labels[1][1], 'Turkish')
 
     def test_get_input_context_labels(self):
-        config_data = """
+        config_data = '''
         context_labels_from_input {
             label_key { string_value: "PetType" }
             label_value {
@@ -264,13 +269,13 @@ class TestMrMetric(TestCase):
                 }
             }
         } 
-        """
+        '''
         config_proto = metric_configuration_pb2.SidecarConfig()
         text_format.Parse(config_data, config_proto)
-        payload = json.loads("""{
+        payload = json.loads('''{
             "Type": "Cat",
             "Breed": "Turkish"
-        }""")
+        }''')
 
         result = get_context_labels(config_proto, payload, MetricContext.INPUT)
 
@@ -281,7 +286,7 @@ class TestMrMetric(TestCase):
         self.assertEqual(result[1][1], 'Turkish')
 
     def test_multiple_labels_with_wildcard(self):
-        config_data = """
+        config_data = '''
         input_metrics {
             name: "input_distribution_counts"
             simple_counter {}
@@ -297,17 +302,18 @@ class TestMrMetric(TestCase):
                 }
             }
         }
-        """
+        '''
         config_proto = metric_configuration_pb2.SidecarConfig()
         text_format.Parse(config_data, config_proto)
-        payload = json.loads("""{"instances": [{
+        payload = json.loads('''{"instances": [{
             "Data": {},
             "Tags": [
                 "Wellness", "Organic", "Ethical"
             ]
-        }]}""")
+        }]}''')
 
-        result = get_metric_instances(config_proto, payload, MetricContext.INPUT)
+        result = get_metric_instances(
+            config_proto, payload, MetricContext.INPUT)
 
         expected_length = 1
         self.assertEqual(len(result), expected_length)
@@ -316,7 +322,7 @@ class TestMrMetric(TestCase):
             counter += 1
             if counter > expected_length:
                 self.fail("Exceeded expected iteration length")
-            
+
             self.assertEqual(spec.instrumentType, metrics.Counter)
             self.assertEqual(spec.metricValueType, int)
             self.assertEqual(spec.name, 'input_distribution_counts')
@@ -337,7 +343,7 @@ class TestMrMetric(TestCase):
             self.assertIn('Ethical', label_values)
 
     def test_multiple_labels_with_filter(self):
-        config_data = """
+        config_data = '''
         input_content_filter: ".instances[*]"
         input_metrics {
             name: "input_distribution_counts"
@@ -361,10 +367,10 @@ class TestMrMetric(TestCase):
                 }
             }
         }
-        """
+        '''
         config_proto = metric_configuration_pb2.SidecarConfig()
         text_format.Parse(config_data, config_proto)
-        payload = json.loads("""{"instances": [
+        payload = json.loads('''{"instances": [
             {
                 "Type": [
                     "Cat"
@@ -387,9 +393,10 @@ class TestMrMetric(TestCase):
                     "Labrador"
                 ]
             }
-        ]}""")
+        ]}''')
 
-        result = get_metric_instances(config_proto, payload, MetricContext.INPUT)
+        result = get_metric_instances(
+            config_proto, payload, MetricContext.INPUT)
 
         expected_labels = {
             'PetType': ['Cat', 'Dog'],
@@ -402,7 +409,7 @@ class TestMrMetric(TestCase):
             counter += 1
             if counter > expected_length:
                 self.fail("Exceeded expected iteration length")
-            
+
             self.assertEqual(spec.instrumentType, metrics.Counter)
             self.assertEqual(spec.metricValueType, int)
             self.assertEqual(spec.name, 'input_distribution_counts')
@@ -416,14 +423,16 @@ class TestMrMetric(TestCase):
 
                 self.assertEqual(len(instance.labels), 2)
                 self.assertEqual(instance.labels[0][0], 'PetType')
-                self.assertEqual(instance.labels[0][1], expected_labels['PetType'][instance_counter])
+                self.assertEqual(
+                    instance.labels[0][1], expected_labels['PetType'][instance_counter])
                 self.assertEqual(instance.labels[1][0], 'Breed')
-                self.assertEqual(instance.labels[1][1], expected_labels['Breed'][instance_counter])
+                self.assertEqual(
+                    instance.labels[1][1], expected_labels['Breed'][instance_counter])
 
                 instance_counter += 1
 
     def test_get_input_context_labels_with_filter(self):
-        config_data = """
+        config_data = '''
         input_content_filter: ".instances[*]"
         context_labels_from_input {
             label_key { string_value: "PetType" }
@@ -443,10 +452,10 @@ class TestMrMetric(TestCase):
                 }
             }
         }
-        """
+        '''
         config_proto = metric_configuration_pb2.SidecarConfig()
         text_format.Parse(config_data, config_proto)
-        payload = json.loads("""{"instances": [{
+        payload = json.loads('''{"instances": [{
             "Type": [
                 "Cat"
             ],
@@ -456,7 +465,7 @@ class TestMrMetric(TestCase):
             "Breed1": [
                 "Turkish"
             ]
-        }]}""")
+        }]}''')
 
         result = get_context_labels(config_proto, payload, MetricContext.INPUT)
 
@@ -467,7 +476,7 @@ class TestMrMetric(TestCase):
         self.assertEqual(result[1][1], 'Turkish')
 
     def test_get_output_values_with_filter_metrics(self):
-        config_data = """
+        config_data = '''
         output_content_filter: ".predictions[*]"
         output_metrics {
             value {
@@ -479,12 +488,13 @@ class TestMrMetric(TestCase):
                 }
             }
         } 
-        """
+        '''
         config_proto = metric_configuration_pb2.SidecarConfig()
         text_format.Parse(config_data, config_proto)
         payload = json.loads('{ "predictions": [[0.495]] }')
 
-        result = get_metric_instances(config_proto, payload, MetricContext.OUTPUT)
+        result = get_metric_instances(
+            config_proto, payload, MetricContext.OUTPUT)
 
         expected_length = 1
         self.assertEqual(len(result), expected_length)
@@ -493,7 +503,7 @@ class TestMrMetric(TestCase):
             counter += 1
             if counter > expected_length:
                 self.fail("Exceeded expected iteration length")
-            
+
             self.assertEqual(spec.instrumentType, metrics.ValueRecorder)
             self.assertEqual(spec.metricValueType, float)
             self.assertEqual(spec.name, '')
@@ -506,18 +516,19 @@ class TestMrMetric(TestCase):
             self.assertEqual(value, 0.495)
 
     def test_input_counter_multiple_filter_metrics(self):
-        config_data = """
+        config_data = '''
         input_content_filter: ".instances[*]"
         input_metrics {
             name: "simple"
             simple_counter: {}
         }
-        """
+        '''
         config_proto = metric_configuration_pb2.SidecarConfig()
         text_format.Parse(config_data, config_proto)
         payload = json.loads('{"instances": [{}, {}]}')
 
-        result = get_metric_instances(config_proto, payload, MetricContext.INPUT)
+        result = get_metric_instances(
+            config_proto, payload, MetricContext.INPUT)
 
         expected_length = 1
         self.assertEqual(len(result), expected_length)
@@ -526,7 +537,7 @@ class TestMrMetric(TestCase):
             counter += 1
             if counter > expected_length:
                 self.fail("Exceeded expected iteration length")
-            
+
             self.assertEqual(spec.instrumentType, metrics.Counter)
             self.assertEqual(spec.metricValueType, int)
             self.assertEqual(spec.name, 'simple')
@@ -537,6 +548,7 @@ class TestMrMetric(TestCase):
                 self.assertEqual(len(instance.metricValues), 1)
                 value = instance.metricValues[0]
                 self.assertEqual(value, 1)
+
 
 if __name__ == '__main__':
     main()

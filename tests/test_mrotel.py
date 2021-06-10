@@ -6,6 +6,7 @@ from opentelemetry import metrics
 from metricrule.agent.mrotel import *
 from metricrule.agent.mrmetric import MetricInstrumentSpec
 
+
 class TestMrOtel(TestCase):
     def test_initialize_counter(self):
         meter = MagicMock(metrics.Meter)
@@ -21,13 +22,12 @@ class TestMrOtel(TestCase):
         counter = initialize_instrument(meter, spec)
 
         meter.create_counter.assert_called_with(
-            name=name, 
-            description='', 
-            unit='', 
+            name=name,
+            description='',
+            unit='',
             value_type=int)
         self.assertIsInstance(counter, Counter)
         self.assertEqual(counter.counter, created_counter)
-
 
     def test_initialize_float_recorder(self):
         meter = MagicMock(metrics.Meter)
@@ -43,13 +43,13 @@ class TestMrOtel(TestCase):
         recorder = initialize_instrument(meter, spec)
 
         meter.create_valuerecorder.assert_called_with(
-            name=name, 
-            description='', 
-            unit='', 
+            name=name,
+            description='',
+            unit='',
             value_type=float)
         self.assertIsInstance(recorder, ValueRecorder)
         self.assertEqual(recorder.recorder, created_recorder)
-    
+
     def test_counter_record(self):
         meter = MagicMock(metrics.Meter)
         created_counter = Mock(Counter)
@@ -68,6 +68,7 @@ class TestMrOtel(TestCase):
         self.assertEqual(len(recording), 2)
         self.assertEqual(recording[0], created_counter)
         self.assertEqual(recording[1], 1)
+
 
 if __name__ == '__main__':
     main()
