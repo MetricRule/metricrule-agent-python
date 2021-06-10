@@ -176,7 +176,8 @@ def _extract_values(
     ) -> tuple[Any]:
     if config.HasField('parsed_value'):
         value_type = config.parsed_value.parsed_type
-        jsonpath_expr = parse(config.parsed_value.filter_path)
+        filter = _format_filter(config.parsed_value.field_path)
+        jsonpath_expr = parse(filter)
         matches = jsonpath_expr.find(payload)
         filtered = []
         for match in matches:

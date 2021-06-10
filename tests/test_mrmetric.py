@@ -1,3 +1,4 @@
+import json
 from unittest import TestCase, main
 
 from google.protobuf import text_format
@@ -37,8 +38,9 @@ class TestMrMetric(TestCase):
         """
         config_proto = metric_configuration_pb2.SidecarConfig()
         text_format.Parse(config_data, config_proto)
+        payload = json.loads('{}')
 
-        result = get_metric_instances(config_proto, '{}', MetricContext.INPUT)
+        result = get_metric_instances(config_proto, payload, MetricContext.INPUT)
 
         expected_length = 1
         self.assertEqual(len(result), expected_length)
@@ -72,8 +74,9 @@ class TestMrMetric(TestCase):
         """
         config_proto = metric_configuration_pb2.SidecarConfig()
         text_format.Parse(config_data, config_proto)
+        payload = json.loads('{}')
 
-        result = get_metric_instances(config_proto, '{}', MetricContext.INPUT)
+        result = get_metric_instances(config_proto, payload, MetricContext.INPUT)
 
         expected_length = 1
         self.assertEqual(len(result), expected_length)
@@ -98,13 +101,148 @@ class TestMrMetric(TestCase):
             self.assertEqual(value, 1)
 
     def test_output_value_metrics(self):
-        pass
+        config_data = """
+        output_metrics {
+            name: "output_values"
+            value {
+                value {
+                    parsed_value {
+                        field_path: "$.prediction"
+                        parsed_type: FLOAT
+                    }
+                }
+            }
+        }
+        """
+        config_proto = metric_configuration_pb2.SidecarConfig()
+        text_format.Parse(config_data, config_proto)
+        payload = json.loads('{ "prediction": 0.495 }')
+
+        result = get_metric_instances(config_proto, payload, MetricContext.OUTPUT)
+
+        expected_length = 1
+        self.assertEqual(len(result), expected_length)
+        counter = 0
+        for spec, instances in result.items():
+            counter += 1
+            if counter > expected_length:
+                self.fail("Exceeded expected iteration length")
+            
+            self.assertEqual(spec.instrumentType, metrics.ValueRecorder)
+            self.assertEqual(spec.metricValueType, float)
+            self.assertEqual(spec.name, 'output_values')
+
+            self.assertEqual(len(instances), 1)
+            instance = instances[0]
+            self.assertEqual(len(instance.labels), 0)
+            self.assertEqual(len(instance.metricValues), 1)
+            value = instance.metricValues[0]
+            self.assertEqual(value, 0.495)
 
     def test_output_nested_value_metrics(self):
-        pass
+        config_data = """
+        output_metrics {
+            name: "output_values"
+            value {
+                value {
+                    parsed_value {
+                        field_path: "$.prediction[0][0]"
+                        parsed_type: FLOAT
+                    }
+                }
+            }
+        }
+        """
+        config_proto = metric_configuration_pb2.SidecarConfig()
+        text_format.Parse(config_data, config_proto)
+        payload = json.loads('{ "prediction": [[0.495]] }')
+
+        result = get_metric_instances(config_proto, payload, MetricContext.OUTPUT)
+
+        expected_length = 1
+        self.assertEqual(len(result), expected_length)
+        counter = 0
+        for spec, instances in result.items():
+            counter += 1
+            if counter > expected_length:
+                self.fail("Exceeded expected iteration length")
+            
+            self.assertEqual(spec.instrumentType, metrics.ValueRecorder)
+            self.assertEqual(spec.metricValueType, float)
+            self.assertEqual(spec.name, 'output_values')
+
+            self.assertEqual(len(instances), 1)
+            instance = instances[0]
+            self.assertEqual(len(instance.labels), 0)
+            self.assertEqual(len(instance.metricValues), 1)
+            value = instance.metricValues[0]
+            self.assertEqual(value, 0.495)
 
     def test_multiple_inputs_nested_value_metrics(self):
-        pass
+        config_data = """
+        input_metrics {
+            name: "input_distribution_counts"
+            simple_counter {}
+            labels {
+                label_key { string_value: "PetType" }
+                label_value {
+                    parsed_value {
+                        field_path: ".instances[0].Type[0]"
+                        parsed_type: STRING
+                    }
+                }
+            }
+            labels {
+                label_key { string_value: "Breed" }
+                label_value {
+                    parsed_value {
+                        field_path: ".instances[0].Breed1[0]"
+                        parsed_type: STRING
+                    }
+                }
+            }
+        } 
+        """
+        config_proto = metric_configuration_pb2.SidecarConfig()
+        text_format.Parse(config_data, config_proto)
+        payload = json.loads("""{"instances": [{
+            "Type": [
+                "Cat"
+            ],
+            "Age": [
+                4
+            ],
+            "Breed1": [
+                "Turkish"
+            ]
+        }]}""")
+
+        result = get_metric_instances(config_proto, payload, MetricContext.INPUT)
+
+        expected_length = 1
+        self.assertEqual(len(result), expected_length)
+        counter = 0
+        for spec, instances in result.items():
+            counter += 1
+            if counter > expected_length:
+                self.fail("Exceeded expected iteration length")
+            
+            self.assertEqual(spec.instrumentType, metrics.Counter)
+            self.assertEqual(spec.metricValueType, int)
+            self.assertEqual(spec.name, 'input_distribution_counts')
+
+            self.assertEqual(len(instances), 1)
+            instance = instances[0]
+
+            self.assertEqual(len(instance.metricValues), 1)
+            value = instance.metricValues[0]
+            self.assertEqual(value, 1)
+
+            self.assertEqual(len(instance.labels), 2)
+            self.assertEqual(instance.labels[0][0], 'PetType')
+            self.assertEqual(instance.labels[0][1], 'Cat')
+            self.assertEqual(instance.labels[1][0], 'Breed')
+            self.assertEqual(instance.labels[1][1], 'Turkish')
 
     def test_get_input_context_labels(self):
         pass
