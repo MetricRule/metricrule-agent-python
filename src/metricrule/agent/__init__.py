@@ -33,8 +33,8 @@ class WSGIMetricsMiddleware:
 
         processor_mode = "stateful"
         metrics.set_meter_provider(MeterProvider())
-        self._meter = metrics.get_meter(__name__, processor_mode == "stateful")
-        exporter = PrometheusMetricsExporter("metricrule.agent.python")
+        self._meter = metrics.get_meter(__name__, processor_mode == 'stateful')
+        exporter = PrometheusMetricsExporter('metricrule_python_agent')
         self._controller = PushController(self._meter, exporter, 5)
 
         specs = mrmetric.get_instrument_specs(self._config)
@@ -72,7 +72,7 @@ class WSGIMetricsMiddleware:
             self._config, json_obj, mrmetric.MetricContext.INPUT)
         metric_instances = mrmetric.get_metric_instances(
             self._config, json_obj, mrmetric.MetricContext.INPUT)
-        for spec, instances in metric_instances:
+        for spec, instances in metric_instances.items():
             instrument = self._input_instruments[spec]
             for instance in instances:
                 recordings = [instrument.record(val)
@@ -88,8 +88,8 @@ class WSGIMetricsMiddleware:
             return
         metric_instances = mrmetric.get_metric_instances(
             self._config, json_obj, mrmetric.MetricContext.OUTPUT)
-        for spec, instances in metric_instances:
-            instrument = self._input_instruments[spec]
+        for spec, instances in metric_instances.items():
+            instrument = self._output_instruments[spec]
             for instance in instances:
                 recordings = [instrument.record(val)
                               for val in instance.metricValues]

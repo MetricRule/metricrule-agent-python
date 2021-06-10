@@ -9,7 +9,7 @@ app = Flask('MetricRuleDemoApp')
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    return '{"status": "ok"}'
+    return '{"predictions": [[0.495]]}'
 
 
 if __name__ == "__main__":
