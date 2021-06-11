@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, Mock
 
 from opentelemetry import metrics
 
-from metricrule.agent.mrotel import *
+from metricrule.agent.mrotel import initialize_instrument, Counter, ValueRecorder
 from metricrule.agent.mrmetric import MetricInstrumentSpec
 
 

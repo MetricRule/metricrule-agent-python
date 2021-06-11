@@ -7,8 +7,9 @@ appropriate instrument given a specification.
 from typing import Any, Optional
 import abc
 from opentelemetry import metrics
+from opentelemetry.metrics import Meter, Metric
 
-from . import mrmetric
+from .mrmetric import MetricInstrumentSpec
 
 
 class Instrument(abc.ABC):
@@ -16,7 +17,7 @@ class Instrument(abc.ABC):
     Represents an instrument that can record a metric.
     '''
     @abc.abstractmethod
-    def record(self, value: Any) -> Optional[tuple[metrics.Metric, Any]]:
+    def record(self, value: Any) -> Optional[tuple[Metric, Any]]:
         '''
         Associates the metric instrument with a value.
         The tuple is expected to be used in meter.record_batch.
@@ -31,7 +32,7 @@ class Counter(Instrument):
     def __init__(self, counter: metrics.Counter):
         self.counter = counter
 
-    def record(self, value: Any) -> Optional[tuple[metrics.Metric, Any]]:
+    def record(self, value: Any) -> Optional[tuple[Metric, Any]]:
         return (self.counter, value)
 
 
@@ -43,7 +44,7 @@ class ValueRecorder(Instrument):
     def __init__(self, recorder: metrics.ValueRecorder):
         self.recorder = recorder
 
-    def record(self, value: Any) -> Optional[tuple[metrics.Metric, Any]]:
+    def record(self, value: Any) -> Optional[tuple[Metric, Any]]:
         return (self.recorder, value)
 
 
@@ -52,13 +53,13 @@ class NoOp(Instrument):
     An instrument that does not do anything.
     '''
 
-    def record(self, _: Any) -> Optional[tuple[metrics.Metric, Any]]:
+    def record(self, _: Any) -> Optional[tuple[Metric, Any]]:
         return None
 
 
 def initialize_instrument(
-    meter: metrics.Meter,
-    spec: mrmetric.MetricInstrumentSpec
+    meter: Meter,
+    spec: MetricInstrumentSpec
 ) -> Instrument:
     '''
     Initializes an instrument to the given spec in the given meter.
