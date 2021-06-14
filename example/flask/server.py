@@ -12,7 +12,7 @@ def predict():
     return '{"predictions": [[0.495]]}'
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('agent_config_path',
                         help='Absolute path to textproto config file for MetricRule agent')

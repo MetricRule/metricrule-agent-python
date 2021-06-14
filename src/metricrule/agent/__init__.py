@@ -3,9 +3,10 @@ This package contains middleware and applications to:
 - Inject middleware that creates metrics for WSGI apps
 - Build an WSGI app that exports metrics.
 '''
+from typing import Union
 from google.protobuf import text_format
 from opentelemetry.exporter.prometheus import PrometheusMetricsExporter
-from opentelemetry.metrics import get_meter, set_meter_provider 
+from opentelemetry.metrics import get_meter, set_meter_provider
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export.controller import PushController
 from prometheus_client import make_wsgi_app, make_asgi_app
@@ -85,6 +86,22 @@ class WSGIMetricsMiddleware:
 
 
 class ASGIMetricsMiddleware(BaseHTTPMiddleware):
+    class LoggingResponse():
+        def __init__(self, original_response, log_fn):
+            self.original_response = original_response
+            self.log_fn = log_fn
+            self.chunks = b''
+
+        async def __call__(self, scope, receive, send) -> None:
+            async def logging_send(message) -> None:
+                if 'body' in message:
+                    self.chunks += message['body']
+                if not 'more_body' in message or not message['more_body']:
+                    self.log_fn(self.chunks)
+                await send(message)
+
+            await self.original_response(scope, receive, logging_send)
+
     def __init__(self, app, config_path=None):
         super().__init__(app)
         self._config = _load_config(config_path)
@@ -110,8 +127,12 @@ class ASGIMetricsMiddleware(BaseHTTPMiddleware):
         log_request_metrics(
             self._config, self._input_instruments, self._meter, request_body)
         response = await call_next(request)
-        log_response_metrics(
-            self._config, self._output_instruments, self._meter, response.body)
+        if response.status_code == 200:
+            def log_fn(r: Union[str, bytes]): return log_response_metrics(
+                self._config, self._output_instruments, self._meter, r)
+            logging_response = ASGIMetricsMiddleware.LoggingResponse(
+                response, log_fn)
+            return logging_response
         return response
 
 
