@@ -5,10 +5,6 @@ This package contains middleware and applications to:
 '''
 from typing import Union
 from google.protobuf import text_format
-from opentelemetry.exporter.prometheus import PrometheusMetricsExporter
-from opentelemetry.metrics import get_meter, set_meter_provider
-from opentelemetry.sdk.metrics import MeterProvider
-from opentelemetry.sdk.metrics.export.controller import PushController
 from prometheus_client import make_wsgi_app, make_asgi_app
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
@@ -45,19 +41,15 @@ class WSGIMetricsMiddleware:
         self.app = app
         self._config = _load_config(config_path)
 
-        processor_mode = 'stateful'
-        set_meter_provider(MeterProvider())
-        self._meter = get_meter(__name__, processor_mode == 'stateful')
-        exporter = PrometheusMetricsExporter('metricrule_python_agent')
-        self._controller = PushController(self._meter, exporter, 5)
+        print('Running WSGI init')
 
         specs = get_instrument_specs(self._config)
         self._input_instruments = {
-            spec: initialize_instrument(self._meter, spec)
+            spec: initialize_instrument(spec)
             for spec in specs[MetricContext.INPUT]
         }
         self._output_instruments = {
-            spec: initialize_instrument(self._meter, spec)
+            spec: initialize_instrument(spec)
             for spec in specs[MetricContext.OUTPUT]
         }
 
@@ -78,11 +70,11 @@ class WSGIMetricsMiddleware:
 
     def _get_request_metrics(self, request_body) -> None:
         log_request_metrics(
-            self._config, self._input_instruments, self._meter, request_body)
+            self._config, self._input_instruments, request_body)
 
     def _get_response_metrics(self, response_body) -> None:
         log_response_metrics(
-            self._config, self._output_instruments, self._meter, response_body)
+            self._config, self._output_instruments, response_body)
 
 
 class ASGIMetricsMiddleware(BaseHTTPMiddleware):
@@ -106,32 +98,25 @@ class ASGIMetricsMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self._config = _load_config(config_path)
 
-        processor_mode = 'stateful'
-        set_meter_provider(MeterProvider())
-        self._meter = get_meter(__name__, processor_mode == 'stateful')
-        exporter = PrometheusMetricsExporter('metricrule_python_agent')
-        self._controller = PushController(self._meter, exporter, 5)
-
         specs = get_instrument_specs(self._config)
         self._input_instruments = {
-            spec: initialize_instrument(self._meter, spec)
+            spec: initialize_instrument(spec)
             for spec in specs[MetricContext.INPUT]
         }
         self._output_instruments = {
-            spec: initialize_instrument(self._meter, spec)
+            spec: initialize_instrument(spec)
             for spec in specs[MetricContext.OUTPUT]
         }
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         request_body = await request.body()
         log_request_metrics(
-            self._config, self._input_instruments, self._meter, request_body)
+            self._config, self._input_instruments, request_body)
         response = await call_next(request)
         if response.status_code == 200:
-            def log_fn(r: Union[str, bytes]): return log_response_metrics(
-                self._config, self._output_instruments, self._meter, r)
             logging_response = ASGIMetricsMiddleware.LoggingResponse(
-                response, log_fn)
+                response, lambda r: log_response_metrics(
+                    self._config, self._output_instruments, r))
             return logging_response
         return response
 

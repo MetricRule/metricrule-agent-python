@@ -4,10 +4,10 @@ This module defines OpenTelemetry instruments used to record metrics.
 An `initialize_instrument` method is also provided that initializes an
 appropriate instrument given a specification.
 '''
-from typing import Any, Optional
+from typing import Any
 import abc
-from opentelemetry import metrics
-from opentelemetry.metrics import Meter, Metric
+
+import prometheus_client
 
 from .mrmetric import MetricInstrumentSpec
 
@@ -17,23 +17,25 @@ class Instrument(abc.ABC):
     Represents an instrument that can record a metric.
     '''
     @abc.abstractmethod
-    def record(self, value: Any) -> Optional[tuple[Metric, Any]]:
+    def record(self, value: Any, labels: tuple[tuple[str, str]]) -> None:
         '''
-        Associates the metric instrument with a value.
-        The tuple is expected to be used in meter.record_batch.
+        Associates the metric instrument with a value and labels.
         '''
 
 
 class Counter(Instrument):
     '''
-    An instrument that maintains an increasing count of a value.
+    An instrument that maintains a monotonically increasing count of a value.
     '''
 
-    def __init__(self, counter: metrics.Counter):
+    def __init__(self, counter: prometheus_client.Counter):
         self.counter = counter
 
-    def record(self, value: Any) -> Optional[tuple[Metric, Any]]:
-        return (self.counter, value)
+    def record(self, value: Any, labels: dict[str, str]) -> None:
+        if len(labels) > 0:
+            self.counter.labels(*[v for (_, v) in labels.items()]).inc(value)
+        else:
+            self.counter.inc(value)
 
 
 class ValueRecorder(Instrument):
@@ -41,11 +43,15 @@ class ValueRecorder(Instrument):
     An instrument that records a value.
     '''
 
-    def __init__(self, recorder: metrics.ValueRecorder):
+    def __init__(self, recorder: prometheus_client.Histogram):
         self.recorder = recorder
 
-    def record(self, value: Any) -> Optional[tuple[Metric, Any]]:
-        return (self.recorder, value)
+    def record(self, value: Any, labels: dict[str, str]) -> None:
+        if len(labels) > 0:
+            self.recorder.labels(
+                *[v for (_, v) in labels.items()]).observe(value)
+        else:
+            self.recorder.observe(value)
 
 
 class NoOp(Instrument):
@@ -53,32 +59,27 @@ class NoOp(Instrument):
     An instrument that does not do anything.
     '''
 
-    def record(self, _: Any) -> Optional[tuple[Metric, Any]]:
+    def record(self, value: Any, labels: dict[str, str]) -> None:
         return None
 
 
 def initialize_instrument(
-    meter: Meter,
     spec: MetricInstrumentSpec
 ) -> Instrument:
     '''
     Initializes an instrument to the given spec in the given meter.
     '''
-    if spec.instrumentType == metrics.Counter:
-        counter = meter.create_counter(
+    if spec.instrumentType == prometheus_client.Counter:
+        counter = prometheus_client.Counter(
             name=spec.name,
-            description='',
-            unit='',
-            value_type=spec.metricValueType,
-        )
+            documentation='',
+            labelnames=spec.labelNames)
         return Counter(counter)
-    if spec.instrumentType == metrics.ValueRecorder:
-        recorder = meter.create_valuerecorder(
+    if spec.instrumentType == prometheus_client.Histogram:
+        recorder = prometheus_client.Histogram(
             name=spec.name,
-            description='',
-            unit='',
-            value_type=spec.metricValueType
-        )
+            documentation='',
+            labelnames=spec.labelNames)
         return ValueRecorder(recorder)
     # TODO(jishnu): Add error logging.
     return NoOp()

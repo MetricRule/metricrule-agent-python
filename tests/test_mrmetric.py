@@ -2,7 +2,7 @@ import json
 from unittest import TestCase, main
 
 from google.protobuf import text_format
-from opentelemetry import metrics
+import prometheus_client
 
 from metricrule.config_gen import metric_configuration_pb2
 from metricrule.agent.mrmetric import get_instrument_specs, get_context_labels, get_metric_instances, MetricContext
@@ -25,7 +25,7 @@ class TestMrMetric(TestCase):
         self.assertEqual(len(spec[MetricContext.OUTPUT]), 0)
 
         single_spec = spec[MetricContext.INPUT][0]
-        self.assertEqual(single_spec.instrumentType, metrics.Counter)
+        self.assertEqual(single_spec.instrumentType, prometheus_client.Counter)
         self.assertEqual(single_spec.metricValueType, int)
         self.assertEqual(single_spec.name, 'simple')
 
@@ -51,7 +51,7 @@ class TestMrMetric(TestCase):
             if counter > expected_length:
                 self.fail("Exceeded expected iteration length")
 
-            self.assertEqual(spec.instrumentType, metrics.Counter)
+            self.assertEqual(spec.instrumentType, prometheus_client.Counter)
             self.assertEqual(spec.metricValueType, int)
             self.assertEqual(spec.name, 'simple')
 
@@ -88,7 +88,7 @@ class TestMrMetric(TestCase):
             if counter > expected_length:
                 self.fail("Exceeded expected iteration length")
 
-            self.assertEqual(spec.instrumentType, metrics.Counter)
+            self.assertEqual(spec.instrumentType, prometheus_client.Counter)
             self.assertEqual(spec.metricValueType, int)
             self.assertEqual(spec.name, 'simple')
 
@@ -131,7 +131,7 @@ class TestMrMetric(TestCase):
             if counter > expected_length:
                 self.fail("Exceeded expected iteration length")
 
-            self.assertEqual(spec.instrumentType, metrics.ValueRecorder)
+            self.assertEqual(spec.instrumentType, prometheus_client.Histogram)
             self.assertEqual(spec.metricValueType, float)
             self.assertEqual(spec.name, 'output_values')
 
@@ -171,7 +171,7 @@ class TestMrMetric(TestCase):
             if counter > expected_length:
                 self.fail("Exceeded expected iteration length")
 
-            self.assertEqual(spec.instrumentType, metrics.ValueRecorder)
+            self.assertEqual(spec.instrumentType, prometheus_client.Histogram)
             self.assertEqual(spec.metricValueType, float)
             self.assertEqual(spec.name, 'output_values')
 
@@ -232,7 +232,7 @@ class TestMrMetric(TestCase):
             if counter > expected_length:
                 self.fail("Exceeded expected iteration length")
 
-            self.assertEqual(spec.instrumentType, metrics.Counter)
+            self.assertEqual(spec.instrumentType, prometheus_client.Counter)
             self.assertEqual(spec.metricValueType, int)
             self.assertEqual(spec.name, 'input_distribution_counts')
 
@@ -323,7 +323,7 @@ class TestMrMetric(TestCase):
             if counter > expected_length:
                 self.fail("Exceeded expected iteration length")
 
-            self.assertEqual(spec.instrumentType, metrics.Counter)
+            self.assertEqual(spec.instrumentType, prometheus_client.Counter)
             self.assertEqual(spec.metricValueType, int)
             self.assertEqual(spec.name, 'input_distribution_counts')
 
@@ -410,7 +410,7 @@ class TestMrMetric(TestCase):
             if counter > expected_length:
                 self.fail("Exceeded expected iteration length")
 
-            self.assertEqual(spec.instrumentType, metrics.Counter)
+            self.assertEqual(spec.instrumentType, prometheus_client.Counter)
             self.assertEqual(spec.metricValueType, int)
             self.assertEqual(spec.name, 'input_distribution_counts')
 
@@ -504,7 +504,7 @@ class TestMrMetric(TestCase):
             if counter > expected_length:
                 self.fail("Exceeded expected iteration length")
 
-            self.assertEqual(spec.instrumentType, metrics.ValueRecorder)
+            self.assertEqual(spec.instrumentType, prometheus_client.Histogram)
             self.assertEqual(spec.metricValueType, float)
             self.assertEqual(spec.name, '')
 
@@ -538,7 +538,7 @@ class TestMrMetric(TestCase):
             if counter > expected_length:
                 self.fail("Exceeded expected iteration length")
 
-            self.assertEqual(spec.instrumentType, metrics.Counter)
+            self.assertEqual(spec.instrumentType, prometheus_client.Counter)
             self.assertEqual(spec.metricValueType, int)
             self.assertEqual(spec.name, 'simple')
 

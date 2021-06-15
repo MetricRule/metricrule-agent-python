@@ -5,16 +5,17 @@ and derive metric values based on configuration and payload.
 from typing import Any, Optional, NamedTuple
 from enum import Enum
 
-from opentelemetry import metrics
 from jsonpath_ng import parse
+import prometheus_client
 
 from ..config_gen import metric_configuration_pb2
 
 
 class MetricInstrumentSpec(NamedTuple):
     instrumentType: type
-    metricValueType: metrics.ValueT
+    metricValueType: type
     name: str
+    labelNames: tuple[str]
 
 
 class MetricInstance(NamedTuple):
@@ -110,10 +111,12 @@ def _get_instrument_spec(
 ) -> MetricInstrumentSpec:
     instrument_type = _get_instrument_type(config)
     metric_value_type = _get_metric_value_type(config)
+    label_names = _get_metric_label_keys_no_payload(config)
     return MetricInstrumentSpec(
         instrumentType=instrument_type,
         metricValueType=metric_value_type,
         name=config.name,
+        labelNames=label_names,
     )
 
 
@@ -122,11 +125,11 @@ def _get_instrument_type(
 ) -> type:
     configured_type = config.WhichOneof('metric')
     if configured_type == 'simple_counter':
-        return metrics.Counter
+        return prometheus_client.Counter
     if configured_type == 'value':
-        return metrics.ValueRecorder
+        return prometheus_client.Histogram
     # default to counter.
-    return metrics.Counter
+    return prometheus_client.Counter
 
 
 def _get_metric_value_type(
@@ -171,6 +174,16 @@ def _get_metric_labels(
     for label_config in config.labels:
         labels.extend(_get_labels_for_label_config(label_config, payload))
     return tuple(labels)
+
+
+def _get_metric_label_keys_no_payload(
+    config: metric_configuration_pb2.MetricConfig
+) -> tuple[str]:
+    label_keys = []
+    for label_config in config.labels:
+        key = _extract_values(label_config.label_key, {})
+        label_keys.extend(key)
+    return tuple(label_keys)
 
 
 def _get_labels_for_label_config(
