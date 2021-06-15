@@ -41,8 +41,6 @@ class WSGIMetricsMiddleware:
         self.app = app
         self._config = _load_config(config_path)
 
-        print('Running WSGI init')
-
         specs = get_instrument_specs(self._config)
         self._input_instruments = {
             spec: initialize_instrument(spec)

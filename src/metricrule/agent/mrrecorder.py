@@ -13,7 +13,6 @@ InstrumentMap = dict[MetricInstrumentSpec, Instrument]
 def log_request_metrics(config: SidecarConfig,
                         input_instruments: InstrumentMap,
                         request_body: Union[str, bytes]) -> None:
-    print(request_body)
     try:
         json_obj = json.loads(request_body)
     except ValueError:
@@ -35,7 +34,6 @@ def log_request_metrics(config: SidecarConfig,
 def log_response_metrics(config: SidecarConfig,
                          output_instruments: InstrumentMap,
                          response_body: Union[str, bytes]) -> None:
-    print(response_body)
     try:
         json_obj = json.loads(response_body)
     except ValueError:
