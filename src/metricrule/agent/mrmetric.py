@@ -63,10 +63,13 @@ def get_instrument_specs(
       be used in.
     """
     specs = {}
+
+    def get_spec_fn(metric_config: metric_configuration_pb2.MetricConfig):
+        return _get_instrument_spec(metric_config, config.context_labels_from_input)
     specs[MetricContext.INPUT] = tuple(
-        map(_get_instrument_spec, config.input_metrics))
+        map(get_spec_fn, config.input_metrics))
     specs[MetricContext.OUTPUT] = tuple(
-        map(_get_instrument_spec, config.output_metrics))
+        map(get_spec_fn, config.output_metrics))
     return specs
 
 
@@ -88,12 +91,15 @@ def get_metric_instances(
     """
     configs: tuple[metric_configuration_pb2.MetricConfig, ...]
     filter_str: str
+    ctx_labels_for_spec: tuple[metric_configuration_pb2.LabelConfig, ...]
     if context == MetricContext.INPUT:
         configs = tuple(config.input_metrics)
         filter_str = _format_filter(config.input_content_filter)
+        ctx_labels_for_spec = config.context_labels_from_input
     elif context == MetricContext.OUTPUT:
         configs = tuple(config.output_metrics)
         filter_str = _format_filter(config.output_content_filter)
+        ctx_labels_for_spec = config.context_labels_from_input
     else:
         return {}
 
@@ -106,7 +112,7 @@ def get_metric_instances(
         for filtered_payload in filtered_values:
             values = _get_metric_values(metric_config, filtered_payload)
             labels = _get_metric_labels(metric_config, filtered_payload)
-            spec = _get_instrument_spec(metric_config)
+            spec = _get_instrument_spec(metric_config, ctx_labels_for_spec)
             if spec in outputs:
                 outputs[spec].append(MetricInstance(values, labels))
             else:
@@ -159,10 +165,13 @@ def _format_filter(filter_str: str) -> str:
 
 def _get_instrument_spec(
     config: metric_configuration_pb2.MetricConfig,
+    context_labels: tuple[metric_configuration_pb2.LabelConfig, ...] = ()
 ) -> MetricInstrumentSpec:
     instrument_type = _get_instrument_type(config)
     metric_value_type = _get_metric_value_type(config)
-    label_names = _get_metric_label_keys_no_payload(config)
+    label_names = _get_metric_label_keys_no_payload(
+        config) + _label_keys_no_payload(context_labels)
+
     return MetricInstrumentSpec(
         instrumentType=instrument_type,
         metricValueType=metric_value_type,
@@ -230,8 +239,14 @@ def _get_metric_labels(
 def _get_metric_label_keys_no_payload(
     config: metric_configuration_pb2.MetricConfig
 ) -> tuple[str, ...]:
+    return _label_keys_no_payload(config.labels)
+
+
+def _label_keys_no_payload(
+    configs: tuple[metric_configuration_pb2.LabelConfig, ...]
+) -> tuple[str, ...]:
     label_keys: list[str] = []
-    for label_config in config.labels:
+    for label_config in configs:
         key = _extract_values(label_config.label_key, {})
         label_keys.extend(key)
     return tuple(label_keys)
