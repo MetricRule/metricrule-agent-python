@@ -1,9 +1,11 @@
-'''
-'''
+"""Recorder of metrics for request and response payloads.
+
+
+"""
 import json
 from typing import Union
 
-from ..config_gen.metric_configuration_pb2 import SidecarConfig
+from ..config_gen.metric_configuration_pb2 import SidecarConfig  # pylint: disable=relative-beyond-top-level
 from .mrmetric import get_context_labels, get_metric_instances, MetricContext, MetricInstrumentSpec
 from .mrotel import Instrument
 
@@ -13,6 +15,14 @@ InstrumentMap = dict[MetricInstrumentSpec, Instrument]
 def log_request_metrics(config: SidecarConfig,
                         input_instruments: InstrumentMap,
                         request_body: Union[str, bytes]) -> None:
+    """Logs metrics for a request payload.
+
+    Args:
+      config: A populated config proto.
+      input_instruments: A map of instrument specifications to their
+        equivalent initialized instruments.
+      request_body: Content of the request payload received.
+    """
     try:
         json_obj = json.loads(request_body)
     except ValueError:
@@ -34,6 +44,14 @@ def log_request_metrics(config: SidecarConfig,
 def log_response_metrics(config: SidecarConfig,
                          output_instruments: InstrumentMap,
                          response_body: Union[str, bytes]) -> None:
+    """Logs metrics for a response payload.
+
+    Args:
+      config: A populated config proto.
+      output_instruments: A map of instrument specifications to their
+        equivalent initialized instruments.
+      response_body: Content of the response payload sent.
+    """
     try:
         json_obj = json.loads(response_body)
     except ValueError:

@@ -1,17 +1,30 @@
-'''
-This module provides methods to get metric instrument specifications
-and derive metric values based on configuration and payload.
-'''
+"""Module to generate metric specifications and instances.
+
+This module provides three functions:
+  - get_instrument_specs to specify metric instruments from config.
+  - get_metric_instances to generate instances / values of metrics,
+      given a config and data.
+  - get_context_labels to generate metric labels, given config and
+       data.
+"""
 from typing import Any, Optional, NamedTuple
 from enum import Enum
 
 from jsonpath_ng import parse
 import prometheus_client
 
-from ..config_gen import metric_configuration_pb2
+from ..config_gen import metric_configuration_pb2  # pylint: disable=relative-beyond-top-level
 
 
 class MetricInstrumentSpec(NamedTuple):
+    """Specification to identify an instrument to collect metrics.
+
+    Attributes:
+      instrumentType: The type of instrument (e.g counter, histogram).
+      metricValueType: The type of value recorder (e.g int, float).
+      name: The name of the instrument.
+      labelNames: A list of label names associated with the instrument.
+    """
     instrumentType: type
     metricValueType: type
     name: str
@@ -19,11 +32,19 @@ class MetricInstrumentSpec(NamedTuple):
 
 
 class MetricInstance(NamedTuple):
+    """A specific instance of a metric recording.
+
+    Attributes:
+        metricValues: A sequence of values to record.
+        labels: A sequence of key-value pairs associated with the recording.
+    """
     metricValues: tuple[Any]
     labels: tuple[tuple[str, str]]
 
 
 class MetricContext(Enum):
+    """Enumerations of contexts metrics can be in.
+    """
     UNKNOWN = 1
     INPUT = 2
     OUTPUT = 3
@@ -32,6 +53,15 @@ class MetricContext(Enum):
 def get_instrument_specs(
     config: metric_configuration_pb2.SidecarConfig
 ) -> dict[MetricContext, tuple[MetricInstrumentSpec]]:
+    """Gets instrument specifications needed for a configuration.
+
+    Args:
+      config: A populated config proto.
+
+    Returns:
+      Instrument specifications, mapped to the context they should
+      be used in.
+    """
     specs = {}
     specs[MetricContext.INPUT] = tuple(
         map(_get_instrument_spec, config.input_metrics))
@@ -45,6 +75,17 @@ def get_metric_instances(
     payload: Any,
     context: MetricContext,
 ) -> dict[MetricInstrumentSpec, tuple[MetricInstance]]:
+    """Gets metric instances to record.
+
+    Args:
+      config: A populated config proto.
+      payload: Data based on which to generate metrics.
+      context: The metric context to generate metrics for.
+
+    Returns:
+      A mapping of instrument specifications to a sequence of
+      generated metric instances.
+    """
     configs: tuple[metric_configuration_pb2.MetricConfig]
     filter_str: str
     if context == MetricContext.INPUT:
@@ -78,6 +119,16 @@ def get_context_labels(
     payload: Any,
     context: MetricContext,
 ) -> tuple[tuple[str, str]]:
+    """Gets context labels to attach to metrics.
+
+    Args:
+      config: A populated config proto.
+      payload: Data based on which to generate labels.
+      context: The metric context to generate labels for.
+
+    Returns:
+      A list of key-value pairs of the labels to attach.
+    """
     configs: tuple[metric_configuration_pb2.LabelConfig]
     filter_str: str
     if context == MetricContext.INPUT:

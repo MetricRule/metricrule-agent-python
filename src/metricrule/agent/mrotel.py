@@ -1,32 +1,29 @@
-'''
-This module defines OpenTelemetry instruments used to record metrics.
+"""Instruments used to record metrics.
 
-An `initialize_instrument` method is also provided that initializes an
-appropriate instrument given a specification.
-'''
+Methods to initialize a single instrument given a specification, and a
+set of instruments given a configuration, are provided.
+"""
 from typing import Any
 import abc
 
 import prometheus_client
 
-from .mrmetric import MetricInstrumentSpec
+from .mrmetric import MetricInstrumentSpec, MetricContext, get_instrument_specs
+from ..config_gen.metric_configuration_pb2 import SidecarConfig  # pylint: disable=relative-beyond-top-level
 
 
 class Instrument(abc.ABC):
-    '''
-    Represents an instrument that can record a metric.
-    '''
+    """Represents an instrument that can record a metric.
+    """
     @abc.abstractmethod
     def record(self, value: Any, labels: tuple[tuple[str, str]]) -> None:
-        '''
-        Associates the metric instrument with a value and labels.
-        '''
+        """Associates the metric instrument with a value and labels.
+        """
 
 
 class Counter(Instrument):
-    '''
-    An instrument that maintains a monotonically increasing count of a value.
-    '''
+    """Instrument that maintains a monotonically increasing count of a value.
+    """
 
     def __init__(self, counter: prometheus_client.Counter):
         self.counter = counter
@@ -39,9 +36,8 @@ class Counter(Instrument):
 
 
 class ValueRecorder(Instrument):
-    '''
-    An instrument that records a value.
-    '''
+    """An instrument that records a value.
+    """
 
     def __init__(self, recorder: prometheus_client.Histogram):
         self.recorder = recorder
@@ -55,9 +51,8 @@ class ValueRecorder(Instrument):
 
 
 class NoOp(Instrument):
-    '''
-    An instrument that does not do anything.
-    '''
+    """An instrument that does nothing.
+    """
 
     def record(self, value: Any, labels: dict[str, str]) -> None:
         return None
@@ -66,9 +61,14 @@ class NoOp(Instrument):
 def initialize_instrument(
     spec: MetricInstrumentSpec
 ) -> Instrument:
-    '''
-    Initializes an instrument to the given spec in the given meter.
-    '''
+    """Initializes an instrument to the given spec.
+
+    Args:
+      spec: Specification of the instrument to create.
+
+    Returns:
+      The initialized instrument.
+    """
     if spec.instrumentType == prometheus_client.Counter:
         counter = prometheus_client.Counter(
             name=spec.name,
@@ -83,3 +83,27 @@ def initialize_instrument(
         return ValueRecorder(recorder)
     # TODO(jishnu): Add error logging.
     return NoOp()
+
+
+def initialize_all_instruments(
+    config: SidecarConfig
+) -> dict[MetricContext, dict[MetricInstrumentSpec, Instrument]]:
+    """Initializes all instruments specified by config.
+
+    Args:
+      config: A populated config proto.
+
+    Returns:
+      A map of specification to instruments, by context.
+    """
+    specs = get_instrument_specs(config)
+    output = {}
+    output[MetricContext.INPUT] = {
+        spec: initialize_instrument(spec)
+        for spec in specs[MetricContext.INPUT]
+    }
+    output[MetricContext.OUTPUT] = {
+        spec: initialize_instrument(spec)
+        for spec in specs[MetricContext.OUTPUT]
+    }
+    return output
