@@ -16,7 +16,7 @@ class Instrument(abc.ABC):
     """Represents an instrument that can record a metric.
     """
     @abc.abstractmethod
-    def record(self, value: Any, labels: tuple[tuple[str, str]]) -> None:
+    def record(self, value: Any, labels: dict[str, str]) -> None:
         """Associates the metric instrument with a value and labels.
         """
 

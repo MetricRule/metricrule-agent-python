@@ -10,7 +10,7 @@ from .mrmetric import get_context_labels, get_metric_instances, MetricContext, M
 from .mrotel import Instrument
 
 InstrumentMap = dict[MetricInstrumentSpec, Instrument]
-MutableLabelSequence = Optional[MutableSequence[tuple[tuple[str, str]]]]
+MutableLabelSequence = Optional[MutableSequence[tuple[tuple[str, str], ...]]]
 
 
 def log_request_metrics(config: SidecarConfig,

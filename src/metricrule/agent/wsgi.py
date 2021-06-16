@@ -16,6 +16,7 @@ This module provides two classes:
      app.run('127.0.0.1', '9001', debug=True)
 """
 from collections import deque
+from typing import Deque
 
 from prometheus_client import make_wsgi_app
 from werkzeug.wsgi import get_input_stream
@@ -53,7 +54,7 @@ class WSGIMetricsMiddleware:
         self.app = app
         self._config = load_config(config_path)
         self._instruments = initialize_all_instruments(self._config)
-        self._context_labels = deque()
+        self._context_labels: Deque[tuple[tuple[str, str], ...]] = deque()
 
     def __call__(self, environ, start_response):
         """The WSGI application

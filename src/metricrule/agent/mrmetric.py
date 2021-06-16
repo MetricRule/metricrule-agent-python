@@ -28,7 +28,7 @@ class MetricInstrumentSpec(NamedTuple):
     instrumentType: type
     metricValueType: type
     name: str
-    labelNames: tuple[str]
+    labelNames: tuple[str, ...]
 
 
 class MetricInstance(NamedTuple):
@@ -38,8 +38,8 @@ class MetricInstance(NamedTuple):
         metricValues: A sequence of values to record.
         labels: A sequence of key-value pairs associated with the recording.
     """
-    metricValues: tuple[Any]
-    labels: tuple[tuple[str, str]]
+    metricValues: tuple[Any, ...]
+    labels: tuple[tuple[str, str], ...]
 
 
 class MetricContext(Enum):
@@ -52,7 +52,7 @@ class MetricContext(Enum):
 
 def get_instrument_specs(
     config: metric_configuration_pb2.SidecarConfig
-) -> dict[MetricContext, tuple[MetricInstrumentSpec]]:
+) -> dict[MetricContext, tuple[MetricInstrumentSpec, ...]]:
     """Gets instrument specifications needed for a configuration.
 
     Args:
@@ -74,7 +74,7 @@ def get_metric_instances(
     config: metric_configuration_pb2.SidecarConfig,
     payload: Any,
     context: MetricContext,
-) -> dict[MetricInstrumentSpec, tuple[MetricInstance]]:
+) -> dict[MetricInstrumentSpec, tuple[MetricInstance, ...]]:
     """Gets metric instances to record.
 
     Args:
@@ -86,7 +86,7 @@ def get_metric_instances(
       A mapping of instrument specifications to a sequence of
       generated metric instances.
     """
-    configs: tuple[metric_configuration_pb2.MetricConfig]
+    configs: tuple[metric_configuration_pb2.MetricConfig, ...]
     filter_str: str
     if context == MetricContext.INPUT:
         configs = tuple(config.input_metrics)
@@ -97,7 +97,7 @@ def get_metric_instances(
     else:
         return {}
 
-    filtered_values = (payload,)
+    filtered_values: tuple[Any, ...] = (payload,)
     if len(filter_str) > 0:
         filtered_values = _get_filtered_values(filter_str, payload)
 
@@ -118,7 +118,7 @@ def get_context_labels(
     config: metric_configuration_pb2.SidecarConfig,
     payload: Any,
     context: MetricContext,
-) -> tuple[tuple[str, str]]:
+) -> tuple[tuple[str, str], ...]:
     """Gets context labels to attach to metrics.
 
     Args:
@@ -129,7 +129,7 @@ def get_context_labels(
     Returns:
       A list of key-value pairs of the labels to attach.
     """
-    configs: tuple[metric_configuration_pb2.LabelConfig]
+    configs: tuple[metric_configuration_pb2.LabelConfig, ...]
     filter_str: str
     if context == MetricContext.INPUT:
         configs = tuple(config.context_labels_from_input)
@@ -139,16 +139,16 @@ def get_context_labels(
     else:
         return ()
 
-    filtered_values = (payload,)
+    filtered_values: tuple[Any, ...] = (payload,)
     if len(filter_str) > 0:
         filtered_values = _get_filtered_values(filter_str, payload)
 
-    labels = []
+    labels: list[tuple[str, str]] = []
     for label_config in configs:
         for filtered_payload in filtered_values:
             labels.extend(_get_labels_for_label_config(
                 label_config, filtered_payload))
-    return labels
+    return tuple(labels)
 
 
 def _format_filter(filter_str: str) -> str:
@@ -198,7 +198,7 @@ def _get_metric_value_type(
 def _get_filtered_values(
     filter_str: str,
     payload: Any,
-) -> tuple[Any]:
+) -> tuple[Any, ...]:
     jsonpath_expr = parse(filter_str)
     values = [match.value for match in jsonpath_expr.find(payload)]
     return tuple(values)
@@ -207,7 +207,7 @@ def _get_filtered_values(
 def _get_metric_values(
     config: metric_configuration_pb2.MetricConfig,
     payload: Any,
-) -> tuple[Any]:
+) -> tuple[Any, ...]:
     configured_type = config.WhichOneof('metric')
     if configured_type == 'simple_counter':
         return (1,)
@@ -220,8 +220,8 @@ def _get_metric_values(
 def _get_metric_labels(
     config: metric_configuration_pb2.MetricConfig,
     payload: Any,
-) -> tuple[tuple[str, str]]:
-    labels = []
+) -> tuple[tuple[str, str], ...]:
+    labels: list[tuple[str, str]] = []
     for label_config in config.labels:
         labels.extend(_get_labels_for_label_config(label_config, payload))
     return tuple(labels)
@@ -229,8 +229,8 @@ def _get_metric_labels(
 
 def _get_metric_label_keys_no_payload(
     config: metric_configuration_pb2.MetricConfig
-) -> tuple[str]:
-    label_keys = []
+) -> tuple[str, ...]:
+    label_keys: list[str] = []
     for label_config in config.labels:
         key = _extract_values(label_config.label_key, {})
         label_keys.extend(key)
@@ -240,7 +240,7 @@ def _get_metric_label_keys_no_payload(
 def _get_labels_for_label_config(
     config: metric_configuration_pb2.LabelConfig,
     payload: Any,
-) -> tuple[tuple[str, str]]:
+) -> tuple[tuple[str, str], ...]:
     keys = _extract_values(config.label_key, payload)
     values = _extract_values(config.label_value, payload)
     iterlen = max(len(keys), len(values))
@@ -257,7 +257,7 @@ def _get_labels_for_label_config(
 def _extract_values(
     config: metric_configuration_pb2.ValueConfig,
     payload: Any,
-) -> tuple[Any]:
+) -> tuple[Any, ...]:
     if config.HasField('parsed_value'):
         value_type = config.parsed_value.parsed_type
         filter_str = _format_filter(config.parsed_value.field_path)
