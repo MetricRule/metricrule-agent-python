@@ -42,7 +42,7 @@ class ASGIMetricsMiddleware(BaseHTTPMiddleware):
     """ASGI middleware to log metrics for requests and responses.
     """
 
-    class LoggingResponse():
+    class LoggingResponse(Response):
         """A response subclass that logs before forwarding the response.
 
         If the response is streamed, it will be cached until the payload
