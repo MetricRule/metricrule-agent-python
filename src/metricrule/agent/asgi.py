@@ -15,6 +15,8 @@ This module provides two classes:
      app = ASGIApplication.make()
      uvicorn main:app
 """
+from collections import deque
+
 from prometheus_client import make_asgi_app
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
@@ -72,17 +74,25 @@ class ASGIMetricsMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self._config = load_config(config_path)
         self._instruments = initialize_all_instruments(self._config)
+        self._context_labels = deque()
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """Middleware implementation that logs requests and responses.
         """
         request_body = await request.body()
+        self._context_labels.clear()
         log_request_metrics(
-            self._config, self._instruments[MetricContext.INPUT], request_body)
+            self._config,
+            self._instruments[MetricContext.INPUT],
+            request_body,
+            self._context_labels)
         response = await call_next(request)
         if response.status_code == 200:
             logging_response = ASGIMetricsMiddleware.LoggingResponse(
                 response, lambda r: log_response_metrics(
-                    self._config, self._instruments[MetricContext.OUTPUT], r))
+                    self._config,
+                    self._instruments[MetricContext.OUTPUT],
+                    r,
+                    self._context_labels))
             return logging_response
         return response

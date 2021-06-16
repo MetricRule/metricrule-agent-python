@@ -15,6 +15,8 @@ This module provides two classes:
      app.wsgi_app = WSGIApplication.make()
      app.run('127.0.0.1', '9001', debug=True)
 """
+from collections import deque
+
 from prometheus_client import make_wsgi_app
 from werkzeug.wsgi import get_input_stream
 
@@ -51,6 +53,7 @@ class WSGIMetricsMiddleware:
         self.app = app
         self._config = load_config(config_path)
         self._instruments = initialize_all_instruments(self._config)
+        self._context_labels = deque()
 
     def __call__(self, environ, start_response):
         """The WSGI application
@@ -68,9 +71,16 @@ class WSGIMetricsMiddleware:
         return [response_body]
 
     def _get_request_metrics(self, request_body) -> None:
+        self._context_labels.clear()
         log_request_metrics(
-            self._config, self._instruments[MetricContext.INPUT], request_body)
+            self._config,
+            self._instruments[MetricContext.INPUT],
+            request_body,
+            self._context_labels)
 
     def _get_response_metrics(self, response_body) -> None:
         log_response_metrics(
-            self._config, self._instruments[MetricContext.OUTPUT], response_body)
+            self._config,
+            self._instruments[MetricContext.OUTPUT],
+            response_body,
+            self._context_labels)
