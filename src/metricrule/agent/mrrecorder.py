@@ -3,14 +3,14 @@
 
 """
 import json
-from typing import MutableSequence, Optional, Union
+from typing import MutableSequence, Optional, Tuple, Union
 
 from ..config_gen.metric_configuration_pb2 import SidecarConfig  # pylint: disable=relative-beyond-top-level
 from .mrmetric import get_context_labels, get_metric_instances, MetricContext, MetricInstrumentSpec
 from .mrotel import Instrument
 
 InstrumentMap = dict[MetricInstrumentSpec, Instrument]
-MutableLabelSequence = Optional[MutableSequence[tuple[tuple[str, str], ...]]]
+MutableLabelSequence = Optional[MutableSequence[Tuple[Tuple[str, str], ...]]]
 
 
 def log_request_metrics(config: SidecarConfig,
