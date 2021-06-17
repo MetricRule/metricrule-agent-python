@@ -9,3 +9,11 @@ jobs:
     steps:
      - name: Checkout code
        uses: actions/checkout@v2
+       with:
+         submodules: recursive
+     - name: Check types
+       run: make type-check
+     - name: Run linter
+       run: make lint
+     - name: Run unit tests
+       run: make unit-test
