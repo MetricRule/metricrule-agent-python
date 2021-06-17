@@ -4,6 +4,10 @@ FROM --platform=${BUILDPLATFORM:-linux/amd64} python:3.9-buster AS base
 
 WORKDIR /app
 
+ENV VIRTUAL_ENV=/opt/venv
+RUN python -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
 RUN apt-get update \
  && DEBIAN_FRONTEND=noninteractive \
     apt-get install --no-install-recommends --assume-yes \
