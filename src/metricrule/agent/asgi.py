@@ -49,7 +49,9 @@ class ASGIMetricsMiddleware(BaseHTTPMiddleware):
         is complete and logging is done.
         """
 
-        def __init__(self, original_response, log_fn):
+        def __init__(self, original_response, log_fn):  # pylint: disable=super-init-not-called
+            # Super not called since StreamingResponse does not call Response.init,
+            # and so behavior is inconsistent.
             self.original_response = original_response
             self.log_fn = log_fn
             self.chunks = b''
