@@ -21,4 +21,4 @@ Please see the [example](example) directory to see usages.
 
 ## For more information
 
-Please refer to metricrule.com for more information.
+Please refer to [metricrule.com](https://www.metricrule.com) for more information.
